@@ -1,0 +1,16 @@
+# R environment and session files
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Operating system caches
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+# Temporary files
+*.tmp
+*.bak
+*~

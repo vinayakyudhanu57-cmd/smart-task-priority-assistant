@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Task Priority Assistant — Explainable Task Management</title>
+  <meta name="description" content="A functional, explainable task prioritization and time-planning application powered by an R backend with deterministic priority scoring.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Application Shell -->
+  <div class="app-layout">
+    
+    <!-- Top Navigation Header -->
+    <header class="app-header" role="banner">
+      <div class="header-inner container">
+        <div class="brand-group">
+          <div class="brand-icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v4"></path>
+              <path d="m4.93 4.93 2.83 2.83"></path>
+              <path d="M2 12h4"></path>
+              <path d="m4.93 19.07 2.83-2.83"></path>
+              <path d="M12 18v4"></path>
+              <path d="m16.24 16.24 2.83 2.83"></path>
+              <path d="M18 12h4"></path>
+              <path d="m16.24 7.76 2.83-2.83"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1 class="brand-title">Smart Task Priority Assistant</h1>
+            <p class="brand-subtitle">Explainable task prioritization &amp; daily session time-allocation in R</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div id="backend-status" class="status-indicator" title="R Plumber API Connection Status">
+            <span class="status-dot"></span>
+            <span class="status-label">Checking R Engine...</span>
+          </div>
+
+          <button id="btn-toggle-time-planner" class="btn btn-secondary" type="button" aria-expanded="true" aria-controls="time-planner-section">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Time Planner</span>
+          </button>
+
+          <button id="btn-open-create-modal" class="btn btn-primary" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            <span>New Task</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-content container" role="main">
+
+      <!-- Executive Metric Bar -->
+      <section class="metrics-bar" aria-label="Workload Overview">
+        <div class="metric-item">
+          <span class="metric-label">Active Tasks</span>
+          <div class="metric-value-row">
+            <span class="metric-value" id="stat-active-count">0</span>
+            <span class="metric-sub" id="stat-completed-count">/ 0 done</span>
+          </div>
+        </div>
+
+        <div class="metric-item">
+          <span class="metric-label">Total Workload</span>
+          <div class="metric-value-row">
+            <span class="metric-value" id="stat-total-workload">0.0 hrs</span>
+            <span class="metric-sub" id="stat-total-mins">(0 mins)</span>
+          </div>
+        </div>
+
+        <div class="metric-item highlight-urgent">
+          <span class="metric-label">Urgent Priority</span>
+          <div class="metric-value-row">
+            <span class="metric-value" id="stat-urgent-count">0</span>
+            <span class="metric-sub">Score &ge; 80</span>
+          </div>
+        </div>
+
+        <div class="metric-item highlight-overdue">
+          <span class="metric-label">Overdue Deadlines</span>
+          <div class="metric-value-row">
+            <span class="metric-value" id="stat-overdue-count">0</span>
+            <span class="metric-sub">Requires action</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Prominent Next-Task Recommendation Card -->
+      <section id="recommendation-hero" class="recommendation-hero" aria-label="Top Task Recommendation">
+        <div class="hero-header">
+          <div class="hero-badge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+            <span>Recommended Work Item #1</span>
+          </div>
+          <div class="hero-meta-badges">
+            <span id="hero-tier-badge" class="tier-pill urgent">Urgent &bull; 100/100</span>
+            <span id="hero-status-pill" class="badge-subtle">In Progress</span>
+          </div>
+        </div>
+
+        <div class="hero-body">
+          <div class="hero-main-content">
+            <h2 id="hero-title" class="hero-task-title">Deploy Security Patch to Production API</h2>
+            <p id="hero-desc" class="hero-task-desc">Resolve critical authentication vulnerability and rollout tested patch to live cluster.</p>
+            
+            <div class="hero-rationale-box">
+              <div class="rationale-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+              </div>
+              <div class="rationale-text">
+                <span class="rationale-title">Why work on this next?</span>
+                <p id="hero-rationale">CRITICAL ACTION: This task is overdue by 2 days with High importance. Tackle this immediately to mitigate delivery delays.</p>
+              </div>
+            </div>
+
+            <div class="hero-formula-explanation">
+              <span class="formula-label">R Scoring Model:</span>
+              <span id="hero-formula-text">Overdue by 2 days (47/50 urgency) paired with High importance (+35 pts) and optimal focus block (+15 pts); active in-progress momentum bonus (+5 pts).</span>
+            </div>
+          </div>
+
+          <div class="hero-sidebar">
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">Estimated Effort</span>
+              <span id="hero-duration" class="hero-stat-val">60 mins (1.0 hr)</span>
+            </div>
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">Deadline</span>
+              <span id="hero-deadline" class="hero-stat-val text-danger">2026-10-12 (Overdue)</span>
+            </div>
+            <div class="hero-stat-card">
+              <span class="hero-stat-label">Category</span>
+              <span id="hero-category" class="hero-stat-val">Engineering</span>
+            </div>
+            <button id="btn-hero-toggle-done" class="btn btn-hero-complete" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Mark as Completed</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Available-Time Planning Panel -->
+      <section id="time-planner-section" class="time-planner-card" aria-label="Available-Time Planning">
+        <div class="planner-header">
+          <div class="planner-title-group">
+            <div class="planner-icon" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+            </div>
+            <div>
+              <h2 class="planner-title">Daily Session Time-Allocation Planner</h2>
+              <p class="planner-subtitle">Calculates which high-priority tasks realistically fit into your available hours today</p>
+            </div>
+          </div>
+
+          <div class="planner-input-group">
+            <label for="input-available-hours" class="planner-label">Available Time Today:</label>
+            <div class="hours-input-wrapper">
+              <input
+                type="number"
+                id="input-available-hours"
+                class="hours-input"
+                min="0.5"
+                max="16"
+                step="0.5"
+                value="2.5"
+                aria-label="Available hours today"
+              >
+              <span class="hours-unit">hours</span>
+            </div>
+            <div class="quick-hours-buttons">
+              <button class="btn-hour-chip" data-hours="1.0" type="button">1h</button>
+              <button class="btn-hour-chip active" data-hours="2.5" type="button">2.5h</button>
+              <button class="btn-hour-chip" data-hours="4.0" type="button">4h</button>
+              <button class="btn-hour-chip" data-hours="6.0" type="button">6h</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Session Utilization Bar -->
+        <div class="session-meter-container">
+          <div class="meter-labels">
+            <span>Session Allocation: <strong id="plan-allocated-text">150 / 150 mins</strong></span>
+            <span id="plan-slack-text" class="text-muted">0 mins unused buffer</span>
+          </div>
+          <div class="meter-track">
+            <div id="meter-fill-allocated" class="meter-bar allocated" style="width: 100%;"></div>
+            <div id="meter-fill-overflow" class="meter-bar overflow" style="width: 0%;"></div>
+          </div>
+          <p id="planner-warning-text" class="planner-warning-msg">
+            Active workload exceeds your available session. Lower-priority tasks deferred to subsequent blocks.
+          </p>
+        </div>
+
+        <!-- Sequential Allocation Lists -->
+        <div class="planner-columns">
+          <div class="planner-col fitting-col">
+            <h3 class="col-title">
+              <span class="badge-check">&check;</span>
+              Scheduled for Today's Session (<span id="fitting-count">0</span>)
+            </h3>
+            <div id="fitting-tasks-list" class="planner-task-list">
+              <!-- Populated via R API -->
+            </div>
+          </div>
+
+          <div class="planner-col deferred-col">
+            <h3 class="col-title">
+              <span class="badge-defer">&bull;</span>
+              Deferred to Subsequent Sessions (<span id="deferred-count">0</span>)
+            </h3>
+            <div id="deferred-tasks-list" class="planner-task-list">
+              <!-- Populated via R API -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Search, Multi-Filter, and Sorting Controls -->
+      <section class="toolbar-section" aria-label="Task Filters and Search">
+        <div class="toolbar-search-row">
+          <div class="search-box">
+            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              id="search-input"
+              class="search-input"
+              placeholder="Search tasks by title or description in R (case-insensitive)..."
+              autocomplete="off"
+            >
+            <button id="btn-clear-search" class="btn-clear-search" type="button" aria-label="Clear search">&times;</button>
+          </div>
+        </div>
+
+        <div class="toolbar-filters-row">
+          <!-- Status Filter -->
+          <div class="filter-item">
+            <label for="filter-status" class="filter-label">Status:</label>
+            <select id="filter-status" class="filter-select">
+              <option value="">All Statuses</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+
+          <!-- Importance Filter -->
+          <div class="filter-item">
+            <label for="filter-importance" class="filter-label">Importance:</label>
+            <select id="filter-importance" class="filter-select">
+              <option value="">All Importance</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
+            </select>
+          </div>
+
+          <!-- Category Filter -->
+          <div class="filter-item">
+            <label for="filter-category" class="filter-label">Category:</label>
+            <select id="filter-category" class="filter-select">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+
+          <!-- Sort Order -->
+          <div class="filter-item">
+            <label for="filter-sort" class="filter-label">Sort Order:</label>
+            <select id="filter-sort" class="filter-select">
+              <option value="priority:desc">Priority Score (Highest First)</option>
+              <option value="deadline:asc">Earliest Deadline</option>
+              <option value="duration:asc">Shortest Duration (Quick Wins)</option>
+              <option value="duration:desc">Longest Duration</option>
+              <option value="created_at:desc">Newest Created</option>
+              <option value="title:asc">Title (A &rarr; Z)</option>
+            </select>
+          </div>
+
+          <button id="btn-reset-filters" class="btn btn-outline btn-sm" type="button">
+            Reset Filters
+          </button>
+        </div>
+
+        <!-- Filter Results Meta Row -->
+        <div class="toolbar-results-row">
+          <div id="results-count-text" class="results-text">
+            Loading tasks...
+          </div>
+          <div id="active-filter-chips" class="active-chips-box"></div>
+        </div>
+      </section>
+
+      <!-- Ranked Tasks List View -->
+      <section class="tasks-section" aria-label="Ranked Task List">
+        <div id="tasks-list" class="tasks-container">
+          <!-- Populated dynamically via JS & R API -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="empty-state" style="display: none;">
+          <div class="empty-icon" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="9" y1="15" x2="15" y2="15"></line>
+            </svg>
+          </div>
+          <h2 class="empty-title">No matching tasks found</h2>
+          <p class="empty-desc">No tasks match your active search terms or filter selections.</p>
+          <div class="empty-actions">
+            <button id="btn-empty-clear" class="btn btn-secondary" type="button">Clear Filters</button>
+            <button id="btn-empty-create" class="btn btn-primary" type="button">Add New Task</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <div class="footer-inner container">
+        <p class="footer-main">
+          Smart Task Priority Assistant &bull; Powered by Base R &amp; Plumber API &bull; CSV Persistence
+        </p>
+        <p class="footer-note">
+          Deterministic priority scoring models urgency, importance, and duration without external black-box models.
+        </p>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- 1. Add / Edit Task Modal -->
+  <div id="modal-task-form" class="modal-backdrop" aria-hidden="true" role="dialog" aria-labelledby="form-modal-title">
+    <div class="modal-box modal-md" role="document">
+      <div class="modal-header">
+        <h2 id="form-modal-title" class="modal-title">New Task</h2>
+        <button class="btn-close-modal" type="button" aria-label="Close modal" data-close-modal>&times;</button>
+      </div>
+
+      <form id="task-form" novalidate>
+        <input type="hidden" id="form-task-id" value="">
+
+        <div class="modal-body">
+          <div id="form-error-banner" class="form-error-banner" style="display: none;" role="alert"></div>
+
+          <!-- Task Title -->
+          <div class="form-group">
+            <label for="input-task-title" class="form-label required">Task Title</label>
+            <input
+              type="text"
+              id="input-task-title"
+              class="form-control"
+              placeholder="e.g. Deploy Security Patch to Production API"
+              maxlength="150"
+              required
+            >
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label for="input-task-desc" class="form-label">Description</label>
+            <textarea
+              id="input-task-desc"
+              class="form-control"
+              rows="3"
+              placeholder="Add short context, acceptance criteria, or key steps..."
+            ></textarea>
+          </div>
+
+          <!-- Category & Status -->
+          <div class="form-row">
+            <div class="form-group col-half">
+              <label for="input-task-category" class="form-label required">Category</label>
+              <input
+                type="text"
+                id="input-task-category"
+                class="form-control"
+                placeholder="e.g. Engineering, Research, Admin"
+                list="category-datalist"
+                required
+              >
+              <datalist id="category-datalist"></datalist>
+            </div>
+
+            <div class="form-group col-half">
+              <label for="input-task-status" class="form-label required">Status</label>
+              <select id="input-task-status" class="form-control" required>
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Importance, Duration & Deadline -->
+          <div class="form-row">
+            <div class="form-group col-third">
+              <label for="input-task-importance" class="form-label required">Importance</label>
+              <select id="input-task-importance" class="form-control" required>
+                <option value="High">High (+35 pts)</option>
+                <option value="Medium" selected>Medium (+22 pts)</option>
+                <option value="Low">Low (+10 pts)</option>
+              </select>
+            </div>
+
+            <div class="form-group col-third">
+              <label for="input-task-duration" class="form-label required">Duration (Mins)</label>
+              <input
+                type="number"
+                id="input-task-duration"
+                class="form-control"
+                min="5"
+                max="1440"
+                step="5"
+                value="45"
+                required
+              >
+              <span class="form-help-inline" id="duration-hours-preview">0.8 hrs</span>
+            </div>
+
+            <div class="form-group col-third">
+              <label for="input-task-deadline" class="form-label">Deadline (Optional)</label>
+              <input
+                type="date"
+                id="input-task-deadline"
+                class="form-control"
+              >
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+          <button type="submit" id="btn-save-task" class="btn btn-primary">Save Task</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Delete Confirmation Dialog -->
+  <div id="modal-delete-confirm" class="modal-backdrop" aria-hidden="true" role="dialog" aria-labelledby="del-confirm-title">
+    <div class="modal-box modal-sm" role="document">
+      <div class="modal-header">
+        <h2 id="del-confirm-title" class="modal-title text-danger">Delete Task</h2>
+        <button class="btn-close-modal" type="button" aria-label="Close dialog" data-close-modal>&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to permanently delete this task?</p>
+        <p id="delete-task-title-preview" class="delete-task-preview">Task Title</p>
+        <p class="delete-warning">This record will be permanently removed from your CSV file.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline" data-close-modal>Cancel</button>
+        <button type="button" id="btn-confirm-delete" class="btn btn-danger">Confirm Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- Interactive JavaScript Controller -->
+  <script src="script.js"></script>
+</body>
+</html>
