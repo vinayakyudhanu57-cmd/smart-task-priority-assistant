@@ -148,8 +148,3 @@ Rscript R/main.R --demo
 ```
 
 ---
-
-## 8. Deployment Limitations
-
-- **R Backend Requirement**: Priority score calculations, date evaluations, available-time packing, and CSV persistence are executed on the local R engine.
-- **GitHub Pages Limitation**: GitHub Pages serves only static client assets (HTML, CSS, JS) and cannot execute R code or write to persistent server files. To host the full application live, deploy to a container or server running R (such as a VPS, Docker container, or Posit Connect).
